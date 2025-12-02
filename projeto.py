@@ -2,8 +2,6 @@ import subprocess
 import sys
 import random
 import time
-import concurrent.futures
-import os
 from typing import List, Tuple
 
 # =============================================================================
@@ -28,21 +26,22 @@ def detectar_cfg(exemplo: str) -> Tuple[List, List[str]]:
 def executar(exe: str, cfg: List) -> float:
     """Roda o executável e retorna o valor numérico"""
     try:
+        # Executa o comando e captura a saída
         res = subprocess.run([exe] + [str(x) for x in cfg], 
                            capture_output=True, text=True, timeout=30)
         out = res.stdout.strip()
+        # Tenta extrair o valor após ':' ou pega a saída inteira
         valor = float(out.split(":")[-1].strip()) if ":" in out else float(out)
         return valor
     except:
         return float('-inf')
 
 def avaliar_em_massa(exe: str, populacao: List[List]) -> List[float]:
-    """Avalia uma lista de configurações em paralelo usando Threads"""
-    max_workers = min(32, (os.cpu_count() or 4) * 4) 
-    
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        func = lambda p: executar(exe, p)
-        resultados = list(executor.map(func, populacao))
+    """Avalia uma lista de configurações SEQUENCIALMENTE (Um por vez)"""
+    resultados = []
+    for ind in populacao:
+        val = executar(exe, ind)
+        resultados.append(val)
     return resultados
 
 # =============================================================================
@@ -69,7 +68,7 @@ def evolucao(exe: str, cfg0: List, tipos: List[str], modo='max'):
     inicio = time.time()
     TIMEOUT = 1200
 
-    print("\n>>> EVOLUÇÃO (GA) INICIADA (PARALELIZADO)")
+    print("\n>>> EVOLUÇÃO (GA) INICIADA (SEQUENCIAL)")
     pop = 40
     ger = 80
     mut = 0.15
@@ -125,7 +124,7 @@ def enxame(exe: str, cfg0: List, tipos: List[str], modo='max'):
     inicio = time.time()
     TIMEOUT = 1200
 
-    print("\n>>> ENXAME (PSO V2) INICIADO (PARALELIZADO)")
+    print("\n>>> ENXAME (PSO V2) INICIADO (SEQUENCIAL)")
     
     # Parâmetros Avançados do PSO
     n_particulas = 40
@@ -175,7 +174,7 @@ def enxame(exe: str, cfg0: List, tipos: List[str], modo='max'):
             print("\n⛔ Tempo máximo atingido!")
             break
 
-        # 1. Avaliação em Massa
+        # 1. Avaliação em Massa (Agora sequencial)
         valores = avaliar_em_massa(exe, particulas)
 
         # 2. Atualizar Personal Best e Global Best
@@ -243,7 +242,7 @@ def enxame(exe: str, cfg0: List, tipos: List[str], modo='max'):
 # 3) HÍBRIDO GA + SWARM OTIMIZADO
 # =============================================================================
 def hibrido_ga_swarm(exe: str, cfg0: List, tipos: List[str], modo='max'):
-    print("\n>>> MÉTODO HÍBRIDO OTIMIZADO INICIADO")
+    print("\n>>> MÉTODO HÍBRIDO OTIMIZADO INICIADO (SEQUENCIAL)")
     
     inicio = time.time()
     TIMEOUT = 1200 
@@ -367,9 +366,9 @@ def hibrido_ga_swarm(exe: str, cfg0: List, tipos: List[str], modo='max'):
 # =============================================================================
 def menu():
     print("\n" + "="*50)
-    print("  1) Genetic Algorithm")
-    print("  2) Particle Swarm V2 (Inércia + Velocity)")
-    print("  3) Hybrid GA + Swarm V2")
+    print("  1) Genetic Algorithm (Sequencial)")
+    print("  2) Particle Swarm V2 (Sequencial)")
+    print("  3) Hybrid GA + Swarm V2 (Sequencial)")
     print("  0) Sair")
     print("="*50)
 
@@ -409,3 +408,4 @@ def principal():
 
 if __name__ == "__main__":
     principal()
+
